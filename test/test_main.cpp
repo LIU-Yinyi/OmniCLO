@@ -12,7 +12,7 @@
 #include <utility>
 #include <ctime>
 #include <chrono>
-#include <limits>
+#include <regex>
 #include <numeric>
 #include <any>
 
@@ -175,6 +175,7 @@ void print_any(std::any var) {
 }
 
 void print_value(std::any var) {
+    try { auto x = std::any_cast<size_t>(var); std::cout << "Size_t = " << x << std::endl; } catch(std::exception &ex) {}
     try { auto x = std::any_cast<int>(var); std::cout << "Int = " << x << std::endl; } catch(std::exception &ex) {}
     try { auto x = std::any_cast<double>(var); std::cout << "Double = " << x << std::endl; } catch(std::exception &ex) {}
     try { auto x = std::any_cast<std::complex<double>>(var); std::cout << "Complex = " << x << std::endl; } catch(std::exception &ex) {}
@@ -212,6 +213,56 @@ void any_test() {
         print_value(itm.second);
     }
 }
+//-------------------------------------------------//
+struct gen_rand {
+    double range;
+public:
+    explicit gen_rand(double r = 1.0) : range(r/(double)RAND_MAX) {}
+    double operator()() {
+        return rand() * range;
+    }
+};
+
+std::vector<double> gen_rand_vec(size_t num, double range) {
+    std::vector<double> vec(num);
+    std::generate_n(vec.begin(), num, gen_rand(range));
+    return vec;
+}
+
+std::string naming_utils(const std::string &prefix, int index) {
+    std::stringstream ss;
+    ss << prefix << index;
+    return ss.str();
+};
+
+void regex_test() {
+    std::regex re("([a-z]+)([0-9]+)");
+    std::cmatch match_res;
+
+    std::string test01{naming_utils("abc", 12)};
+    if(std::regex_match(test01.c_str(), match_res, re)) {
+        for(const auto &itm: match_res) {
+            std::cout << itm.str() << ", ";
+        }
+        std::cout << std::endl;
+    }
+
+}
+
+void any_dynamic_vector_test() {
+    size_t N = 10;
+    std::map<std::string, std::any> univ_map;
+    for(size_t idx = 0; idx < N; idx++) {
+        univ_map[naming_utils("kappa", idx)] = idx * 10;
+    }
+    for(size_t idx = N; idx < 2 * N; idx++) {
+        univ_map[naming_utils("kappa", idx)] = gen_rand_vec(idx, 10);
+    }
+    for(const auto &itm: univ_map) {
+        std::cout << "Key = " << itm.first << " : ";
+        print_value(itm.second);
+    }
+}
 
 //-------------------------------------------------//
 int main() {
@@ -223,6 +274,7 @@ int main() {
     RUN_TIME_WRAPPER(matrices_test());
     */
     RUN_TIME_WRAPPER(any_test());
-
+    RUN_TIME_WRAPPER(any_dynamic_vector_test());
+    RUN_TIME_WRAPPER(regex_test());
     return 0;
 }

@@ -15,7 +15,6 @@
 #include <tuple>
 #include <map>
 #include <utility>
-#include <physics/matrices/crossbar.hpp>
 
 // Custom Library Header
 #include "display/console.hpp"
