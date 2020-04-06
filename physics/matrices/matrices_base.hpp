@@ -2,8 +2,8 @@
  * @file matrices_base.hpp
  * @brief Base of physical matrices in silicon photonic
  * @author LIU-Yinyi
- * @version 0.1.0
- * @date 2020-04-02
+ * @version 1.0.1
+ * @date 2020-04-06
  */
 
 #ifndef OMNICLO_MATRICES_BASE_HPP
@@ -27,13 +27,14 @@ namespace matrices {
         ~MatricesBase() = default;
 
         template <typename T>
-        size_t add_cell(const std::map<std::string, double> &config_map) {
+        size_t add_cell(const std::map<std::string, std::any> &config_map, const std::string &name = std::string()) {
             static_assert(std::is_base_of<cells::CellBase, T>::value);
-            auto gen_cell = std::make_unique<T>();
-            gen_cell->optimize(config_map);
-            size_t index = cell_ptrs.size();
+            size_t id = cell_ptrs.size();
+            auto gen_name(name);
+            if(gen_name.empty()) { gen_name = utils::naming_identifier(cells::cell_type_name<T>(), id); }
+            auto gen_cell = std::make_unique<T>(gen_name, config_map);
             cell_ptrs.push_back(std::move(gen_cell));
-            return index;
+            return id;
         }
 
         void add_link(size_t out_from, size_t out_port_index, size_t in_to, size_t in_port_index, double weight = 1.0) {
@@ -68,6 +69,16 @@ namespace matrices {
                     std::cout << "$ FROM [Cell: " << outcell_index << " ^ Port: " << outport_index << "] --> "
                         << " TO [Cell: " << incell_index << " ^ Port: " << inport_index << "]  WITH"
                         << " [Length(Weight) = " << link_length << "]." << std::endl;
+                }
+            }
+        }
+
+        void print(const std::vector<size_t> &cells_id = std::vector<size_t>()) const {
+            if(cells_id.empty()) {
+                for(const auto &itm: cell_ptrs) { itm->print(); }
+            } else {
+                for(const auto &id: cells_id) {
+                    if(id < cell_ptrs.size()) { cell_ptrs[id]->print(); }
                 }
             }
         }
@@ -147,8 +158,8 @@ namespace matrices {
         SparseMatrix<double> link_graph;    //!< Graph that indicates the links between cells
         VectorXcd inputs;
         VectorXcd outputs;
-        std::vector<size_t> cell_in_id;    //!< ID List that indicates each head input ports of cells
-        std::vector<size_t> cell_out_id;   //!< ID List that indicates each head output ports of cells
+        std::vector<size_t> cell_in_id;    //!< ID List that indicates each head input ports of cells by index
+        std::vector<size_t> cell_out_id;   //!< ID List that indicates each head output ports of cells by index
         std::vector<std::unique_ptr<cells::CellBase>> cell_ptrs;    //!< Cell Pointers for switches matrices
     };
 }

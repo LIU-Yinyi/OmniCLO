@@ -2,8 +2,8 @@
  * @file waveguide.hpp
  * @brief Relization of Waveguide Generalized Cell
  * @author LIU-Yinyi
- * @version 0.1.0
- * @date 2020-04-03
+ * @version 1.0.1
+ * @date 2020-04-06
  */
 
 #ifndef OMNICLO_WAVEGUIDE_HPP
@@ -21,23 +21,19 @@ namespace cells {
      */
     class Waveguide : public CellBase {
     public:
-        Waveguide(): CellBase(1, 1), refractive_index(1.0), delta_n(0.0), propagate_length(0.0) {}
-
         /**
          * Constructor with Waveguide's properties
-         * @param n: refractive index of waveguide
-         * @param length: propagation length of waveguide
+         * @param name: name of device cell
+         * @param vars: parameters of device cell
          */
-        Waveguide(std::complex<double> n, double length): CellBase(1, 1),
-            refractive_index(n), delta_n(0.0), propagate_length(length) {}
-        ~Waveguide() override = default;
-
-        /**
-         * Print the model properties and the protected or private parameters of the cell.
-         */
-        void print() override {
-
+        Waveguide(const std::string &name, const std::map<std::string, std::any> &vars):
+            CellBase(1, 1, name) {
+            device_vars = vars;
+            utils::map_setup_default(device_vars, "n", std::complex<double>(1, 0));
+            utils::map_setup_default(device_vars, "delta_n", std::complex<double>(0, 0));
+            utils::map_setup_default(device_vars, "propagate_length", double(10.0));
         }
+        ~Waveguide() override = default;
 
         /**
          * Waveguide update strategy
@@ -45,8 +41,11 @@ namespace cells {
          */
         void update(double wavelength) override {
             using effects::constants::PI;
-            std::complex<double> k = 2.0 * PI * (refractive_index + delta_n) / wavelength;
-            E_out = exp(i * k * propagate_length) * E_in;
+            const auto &_refractive_index = std::any_cast<std::complex<double>>(device_vars["n"]);
+            const auto &_delta_n = std::any_cast<std::complex<double>>(device_vars["delta_n"]);
+            const auto &_propagate_length = std::any_cast<double>(device_vars["propagate_length"]);
+            std::complex<double> k = 2.0 * PI * (_refractive_index + _delta_n) / wavelength;
+            E_out = exp(i * k * _propagate_length) * E_in;
         }
 
         /**
@@ -54,40 +53,23 @@ namespace cells {
          * @param ctrl_vars: control variables
          * @note CtrlFunc return value needs 1 element for delta_n [ \f$ \Delta n \f$ ]
          */
-        void control(std::vector<double> ctrl_vars) override {
+        void control(std::map<std::string, std::any> ctrl_vars) override {
+            auto &_delta_n = std::any_cast<std::complex<double>&>(device_vars["delta_n"]);
             if(!ctrl_func) {
-                if(ctrl_vars.size() == 1) { delta_n = std::complex<double>(ctrl_vars[0], 0); }
-                else if(ctrl_vars.size() == 2) { delta_n = std::complex<double>(ctrl_vars[0], ctrl_vars[1]); }
-                else { delta_n = 0.0; }
+                if(utils::map_key_exist(ctrl_vars, "delta_n")) { _delta_n = std::any_cast<std::complex<double>>(ctrl_vars["delta_n"]); }
+                else { _delta_n = 0.0; }
             } else {
+                //TODO: update control function and variables
                 auto ctrl_targets = ctrl_func(ctrl_vars);
-                if(ctrl_targets.size() == 1) { delta_n = std::complex<double>(ctrl_targets[0], 0); }
-                else if(ctrl_targets.size() == 2) { delta_n = std::complex<double>(ctrl_targets[0], ctrl_targets[1]); }
-                else { delta_n = 0.0; }
-            }
-        }
-
-        /**
-         * Update the parameters of cell properties that availbale for optimization.
-         * @param optim_map: former key for availableparameter names, latter key for value
-         * @note a complex number or higher dimension should be divided into several double
-         * @note available parameters:
-         */
-        void optimize(const std::map<std::string, double> &optim_map) override {
-            for(const auto &item : optim_map) {
-                if(item.first == "n_real") { refractive_index.real(item.second); }
-                else if(item.first == "n_imag") { refractive_index.imag(item.second); }
-                else if(item.first == "delta_n_real") { delta_n.real(item.second); }
-                else if(item.first == "delta_n_imag") { delta_n.imag(item.second); }
-                else if(item.first == "propagate_length") { propagate_length = item.second; }
-                else { std::cout << YELLOW << "[WARN] {cells->Waveguide/optimize} undefined optimization parameter" << RESET << std::endl; }
+                if(ctrl_targets.size() == 1) { _delta_n = std::any_cast<std::complex<double>>(ctrl_targets[0]); }
+                else { _delta_n = 0.0; }
             }
         }
 
     protected:
-        std::complex<double> refractive_index;  //!< refractive index of waveguide [ \f$ n \f$ ]
-        std::complex<double> delta_n;   //!< change of refractive index of waveguide [ \f$ \Delta n \f$ ]
-        double propagate_length{};  //!< length of light propagation among media materials in unit: *micrometer* [ \f$ L \f$ ]
+        __deprecated std::complex<double> refractive_index;  //!< refractive index of waveguide [ \f$ n \f$ ]
+        __deprecated std::complex<double> delta_n;   //!< change of refractive index of waveguide [ \f$ \Delta n \f$ ]
+        __deprecated double propagate_length{};  //!< length of light propagation among media materials in unit: *micrometer* [ \f$ L \f$ ]
     };
 }
 

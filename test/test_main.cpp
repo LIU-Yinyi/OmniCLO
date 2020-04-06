@@ -119,22 +119,38 @@ void pagmo_testbench() {
 //-------------------------------------------------//
 
 void cells_test() {
-    cells::Waveguide wg(effects::cal_n(1, 0), 1);
+    cells::Waveguide wg("waveguide", {});
     wg.update(1.55);
 
-    cells::Coupler cp(1, 1, 2, 3);
+    cells::Coupler cp("coupler", {});
 
     cells::CellBase *cell = &cp;
-    cell->control(std::vector<double>(1));
+    cell->control(std::map<std::string, std::any>{{"delta_n", std::complex<double>(1.0, 1.0)}});
 
     using effects::constants::i;
     Eigen::Vector2cd E(3.0 + i * 4.0, 4.0 - i * 3.0);
     std::cout << "[Power] " << utils::print_vectorXcd(utils::cal_P(E)) << std::endl;
 }
 
+void microring_test() {
+    using effects::constants::i;
+    std::map<std::string, std::any> config;
+    config["ring_number"] = size_t(16);
+    config["couple_length"] = std::vector<double>(17, 0.0);
+    config["n"] = std::vector<std::complex<double>>(16, 1.4 + 6.04e-6 * i);
+    cells::MicroRingSerial mrs("microring", config);
+    mrs.print();
+    mrs.set_E(Eigen::Vector2cd(1.0, 0.0));
+    mrs.update(1.55);
+    std::cout << "E_in = " << utils::print_vectorXcd(mrs.get_E_in()) << std::endl;
+    std::cout << "E_out = " << utils::print_vectorXcd(mrs.get_E()) << std::endl;
+    std::cout << "P_in = " << utils::print_vectorXcd(utils::cal_P(mrs.get_E_in())) << std::endl;
+    std::cout << "P_out = " << utils::print_vectorXcd(utils::cal_P(mrs.get_E())) << std::endl;
+}
+
 void matrices_test() {
     matrices::MatricesBase mb;
-    std::map<std::string, double> m;
+    std::map<std::string, std::any> m;
     m["propagate_length"] = effects::constants::PI / 4.0;
 
     mb.add_cell<cells::Coupler>(m);
@@ -166,6 +182,8 @@ void matrices_test() {
     mb.update_iterate(1.55);
     std::cout << "Outputs: E = " << utils::print_vectorXcd(mb.get_outputs()) << std::endl;
     std::cout << "Outputs: P = " << utils::print_vectorXcd(utils::cal_P(mb.get_outputs())) << std::endl;
+
+    mb.print();
 }
 
 //-------------------------------------------------//
@@ -264,17 +282,22 @@ void any_dynamic_vector_test() {
     }
 }
 
+void std_complex_vector_vs_eigen_vectorXcd() {
+    std::cout << std::is_same<std::vector<std::complex<double>>, Eigen::VectorXcd>::value << std::endl;
+}
+
 //-------------------------------------------------//
 int main() {
 
-    /*
     RUN_TIME_WRAPPER(random_testbench(100));
     RUN_TIME_WRAPPER(pagmo_testbench());
     RUN_TIME_WRAPPER(cells_test());
     RUN_TIME_WRAPPER(matrices_test());
-    */
+
+    RUN_TIME_WRAPPER(microring_test());
     RUN_TIME_WRAPPER(any_test());
     RUN_TIME_WRAPPER(any_dynamic_vector_test());
     RUN_TIME_WRAPPER(regex_test());
+    RUN_TIME_WRAPPER(std_complex_vector_vs_eigen_vectorXcd());
     return 0;
 }

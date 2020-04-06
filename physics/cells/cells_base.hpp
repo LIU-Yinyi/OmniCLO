@@ -2,8 +2,8 @@
  * @file cells_base.hpp
  * @brief Base of physical cells in silicon photonic
  * @author LIU-Yinyi
- * @version 0.1.0
- * @date 2020-04-02
+ * @version 1.0.1
+ * @date 2020-04-06
  */
 
 #ifndef OMNICLO_CELLS_BASE_HPP
@@ -11,9 +11,11 @@
 
 // C++ Built-in Header
 #include <utility>
+#include <string>
 #include <vector>
 #include <tuple>
 #include <map>
+#include <any>
 #include <utility>
 
 // Custom Library Header
@@ -57,17 +59,122 @@ namespace utils {
         ss << "]";
         return ss.str();
     }
+
+    /**
+     * Acquire the format string of vector double
+     * @param dv: std::vector<double> would like to print as string
+     * @return string of format vector<double>
+     */
+    std::string print_vector_double(const std::vector<double> &dv) {
+        std::stringstream ss{};
+        ss << "[";
+        const auto _separator = ", ";
+        const auto* _sep = "";
+        for (const auto &itm : dv) {
+            ss << _sep << itm;
+            _sep  = _separator;
+        }
+        ss << "]";
+        return ss.str();
+    }
+
+    /**
+     * Acquire the format string of complex double
+     * @param cd: std::complex<double> would like to print as string
+     * @return string of format complex<double>
+     */
+    std::string print_complex_double(const std::complex<double> &cd) {
+        std::stringstream ss{};
+        ss << cd.real();
+        if(cd.imag() >= 0.0) { ss << " + " << cd.imag() << "i, "; }
+        else { ss << " - " << -cd.imag() << "i"; }
+        return ss.str();
+    }
+
+    std::string print_vector_complex_double(const std::vector<std::complex<double>> &v) {
+        std::stringstream ss{};
+        ss << "[";
+        for (size_t idx = 0; idx < v.size() - 1; idx++) {
+            ss << v[idx].real();
+            if(v[idx].imag() >= 0.0) { ss << " + " << v[idx].imag() << "i, "; }
+            else { ss << " - " << -v[idx].imag() << "i, "; }
+        }
+        ss << v[v.size() - 1].real();
+        if(v[v.size() - 1].imag() >= 0.0) { ss << " + " << v[v.size() - 1].imag() << "i"; }
+        else { ss << " - " << -v[v.size() - 1].imag() << "i"; }
+        ss << "]";
+        return ss.str();
+    }
+
+    /**
+     * Acquire the format string of value type in std::any
+     * @param var: value type of std::any would like to print as string
+     * @return string of format any value type or nil
+     * @note supported type: size_t, int, double, std::complex<double>, std::vector<double>, std::vector<std::complex<double>>, Eigen::VectorXcd
+     */
+    std::string print_any_value(std::any var) {
+        std::stringstream ss{};
+        try { auto x = std::any_cast<size_t>(var); ss << x; return ss.str(); } catch(std::exception &ex) {}
+        try { auto x = std::any_cast<int>(var); ss << x; return ss.str(); } catch(std::exception &ex) {}
+        try { auto x = std::any_cast<double>(var); ss << x; return ss.str(); } catch(std::exception &ex) {}
+        try { auto x = std::any_cast<std::complex<double>>(var); ss << print_complex_double(x); return ss.str(); } catch(std::exception &ex) {}
+        try { auto x = std::any_cast<std::vector<std::complex<double>>>(var); ss << print_vector_complex_double(x); return ss.str(); } catch(std::exception &ex) {}
+        try { auto x = std::any_cast<Eigen::VectorXcd>(var); ss << print_vectorXcd(x); return ss.str(); } catch(std::exception &ex) {}
+        try { auto x = std::any_cast<std::vector<double>>(var); ss << print_vector_double(x); return ss.str(); } catch(std::exception &ex) {}
+        std::cout << YELLOW << "\n[WARN] utils::print_any_value(std::any) was past an undefined value type." << RESET << std::endl;
+        return "";
+    }
+
+    /**
+     * Check if key exist in map
+     * @param m: query map of {string: any}
+     * @param key: query key in string
+     * @return whether key exists in map as boolean
+     */
+    bool map_key_exist(const std::map<std::string, std::any> &m, const std::string &key) {
+        return m.find(key) != m.end();
+    }
+
+    /**
+     * Setup default value in map if key does not exist
+     * @param m: map that tests and sets
+     * @param key: query key in string
+     * @param default_val: default value to set as std::any
+     * @return the value with respect to key in map
+     */
+    std::any map_setup_default(std::map<std::string, std::any> &m, const std::string &key, const std::any &default_val) {
+        if(!map_key_exist(m, key)) { m[key] = default_val; }
+        return m[key];
+    }
+
+    /**
+     * Naming Identifier utility
+     * @param prefix: normally letter property name
+     * @param index: normmally number ID
+     * @return combined name in string
+     */
+    std::string naming_identifier(const std::string &prefix, int index = -1) {
+        std::stringstream ss;
+        ss << prefix;
+        if(index >= 0) { ss << index; }
+        return ss.str();
+    };
 }
 
 namespace cells {
 
     using Eigen::VectorXcd;
 
-    typedef std::vector<double>(*CtrlFunc)(std::vector<double>);
+    /**
+     * Control function for switching on-off method
+     * @sa CellBase::control()
+     */
+    typedef std::vector<std::any>(*CtrlFunc)(std::map<std::string, std::any>);
 
     /**
      * Base of cell that needs derived realization.
-     * @note Derived class should realize print(), update(), control(), optimize() for development.
+     * @note Derived class should realize update(), control() for development
+     * @note after version 1.0.0+, print(), optimize() won't be overrided in derived class thanks to universal map
      */
     class CellBase {
     public:
@@ -77,14 +184,37 @@ namespace cells {
          * @param out_size  vector size of out-port
          * @sa in_size(), out_size()
          */
-        explicit CellBase(size_t in_size, size_t out_size): is_updated(true), ctrl_func(nullptr)
-            { E_in = VectorXcd::Zero(in_size); E_out = VectorXcd::Zero(out_size); }
+        explicit CellBase(size_t in_size, size_t out_size, std::string name): is_updated(true),
+            ctrl_func(nullptr), device_vars{}, device_name(std::move(name)) {
+            E_in = VectorXcd::Zero(in_size);
+            E_out = VectorXcd::Zero(out_size);
+        }
         virtual ~CellBase() = default;
 
         /**
-         * Print the model properties and the protected or private parameters of the cell.
+         * Print the model properties of std::map<std::string, std::map> device_vars.
+         * @param query_keys: vector string that queries from cell device variables
          */
-        virtual void print() = 0;
+        void print(const std::vector<std::string> &query_keys = std::vector<std::string>()) {
+            std::cout << "/---------- Cell Parameters ----------\\" << std::endl;
+            std::cout << "| \tDeviceName = " << device_name << std::endl;
+            std::cout << "| \tIn-Ports = " << E_in.size() << ", Out-Ports = " << E_out.size() << std::endl;
+            if(query_keys.empty()) {
+                for(const auto &itm: device_vars) {
+                    std::cout << "| \t" << itm.first << " = " << utils::print_any_value(itm.second) << std::endl;
+                }
+            } else {
+                for(const auto &query_key: query_keys) {
+                    if(utils::map_key_exist(device_vars, query_key)) {
+                        std::cout << "| \t" << query_key << " = " << utils::print_any_value(device_vars[query_key]) << std::endl;
+                    } else {
+                        std::cout << YELLOW << "\n[WARN] cells::print() query key string <" << CYAN << query_key
+                        << YELLOW << "> does not exists in map of cell device_vars." << std::endl;
+                    }
+                }
+            }
+            std::cout << "\\-------------------------------------/" << std::endl;
+        }
 
         /**
          * Virtual function that needs realization in derived class.
@@ -114,17 +244,23 @@ namespace cells {
 
         /**
          * Alternate the properties by changing control variables in order to achieve switch control.
-         * @param ctrl_vars: control variables
+         * @param ctrl_vars: control variables, for example, voltage, temperature, magnetic that affects optic
          * @sa reg_ctrl_func()
          */
-        virtual void control(std::vector<double> ctrl_vars) = 0;
+        virtual void control(std::map<std::string, std::any> ctrl_vars) = 0;
 
         /**
          * Update the parameters of cell properties that availbale for optimization.
-         * @param optim_map: former key for availableparameter names, latter key for value
-         * @note a complex number or higher dimension should be divided into several double
+         * @param optim_map: former key for available parameter names, latter key for value
+         * @note recommend use: size_t, int, double, std::complex<double>, std::vector<double>, Eigen::VectorXcd
          */
-        virtual void optimize(const std::map<std::string, double> &optim_map) = 0;
+        void optimize(const std::map<std::string, std::any> &optim_map) {
+            for(const auto &item : optim_map) {
+                if(utils::map_key_exist(device_vars, item.first)) { device_vars[item.first] = item.second; }
+                else { std::cout << YELLOW << "[WARN] {cells->" << device_name << "/optimize} undefined optimization parameter: "
+                    << CYAN << item.first << RESET << std::endl; }
+            }
+        }
 
         /**
          * Set the values of \f$ E_{in} \f$
@@ -151,6 +287,12 @@ namespace cells {
         size_t out_size() const { return E_out.size(); }
 
         /**
+         * Get the device name of cell saved as device_name
+         * @return device name
+         */
+        std::string get_name() const { return device_name; }
+
+        /**
          * For linear algebra, transfer matrix shape can be defined as \f$ N_{out} \times N_{in} \f$
          * @return std::tuple<size_t (RowNum), size_t (ColNum)>
          * @note for C++17 or above use: auto [rows, cols] = transfer_matrix_shape(); \n
@@ -168,6 +310,8 @@ namespace cells {
         VectorXcd E_in;     //!< Electric field of inputs as column vector
         VectorXcd E_out;     //!< Electric field of outputs as column vector
         CtrlFunc ctrl_func; //!< Function pointer that controls the properties of cell
+        std::string device_name;    //!< Name of cell device
+        std::map<std::string, std::any> device_vars;    //!< Map of device cell's variables or parameters
     };
 
 }
