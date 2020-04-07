@@ -35,7 +35,7 @@ namespace cells {
             utils::map_setup_default(device_vars, "couple_length", std::vector<double>(ring_num + 1, 3.5));
             utils::map_setup_default(device_vars, "self_couple_coef", std::vector<double>(ring_num + 1, 0.912));
             utils::map_setup_default(device_vars, "cross_couple_coef", std::vector<double>(ring_num + 1, 0.410));
-            utils::map_setup_default(device_vars, "n", std::vector<std::complex<double>>(ring_num, 1.0));
+            //utils::map_setup_default(device_vars, "n", std::vector<std::complex<double>>(ring_num, 2.5));
             utils::map_setup_default(device_vars, "delta_n", std::vector<std::complex<double>>(ring_num, 0.0));
         }
         ~MicroRingSerial() override = default;
@@ -52,13 +52,16 @@ namespace cells {
             const auto &_couple_length = std::any_cast<std::vector<double>>(device_vars["couple_length"]);
             const auto &_self_couple = std::any_cast<std::vector<double>>(device_vars["self_couple_coef"]);
             const auto &_cross_couple = std::any_cast<std::vector<double>>(device_vars["cross_couple_coef"]);
-            const auto &_n = std::any_cast<std::vector<std::complex<double>>>(device_vars["n"]);
+            //const auto &_n = std::any_cast<std::vector<std::complex<double>>>(device_vars["n"]);
             const auto &_delta_n = std::any_cast<std::vector<std::complex<double>>>(device_vars["delta_n"]);
-            Matrix2cd m = couple_matrix(_self_couple[0], _cross_couple[0],
-                    2.0 * PI * (_n[0] + _delta_n[0]) / wavelength, _couple_length[0]);
+
+            auto _k0 = 2.0 * PI * (effects::n_effective(wavelength) + _delta_n[0]) / wavelength + i * effects::propagating_loss();
+            Matrix2cd m = couple_matrix(_self_couple[0], _cross_couple[0], _k0 ,_couple_length[0]);
             for(size_t cnt = 0; cnt < _ring_num; cnt++) {
-                auto _k = 2.0 * PI * (_n[cnt] + _delta_n[cnt]) / wavelength;
+                auto _n_eff = effects::n_effective(wavelength);
+                auto _k = 2.0 * PI * (_n_eff + _delta_n[cnt]) / wavelength + i * effects::bending_loss(_radius[cnt]) + i * effects::propagating_loss();
                 m = propagate_matrix(_k, _radius[cnt] * PI) * m;
+                _k = 2.0 * PI * (_n_eff + _delta_n[cnt]) / wavelength + i * effects::propagating_loss();
                 m = couple_matrix(_self_couple[cnt + 1], _cross_couple[cnt + 1], _k, _couple_length[cnt + 1]) * m;
             }
             Matrix2cd mt = transfer_matrix(m);
@@ -68,24 +71,31 @@ namespace cells {
         /**
          * Coupler control strategy
          * @param ctrl_vars: control variables
-         * @note CtrlFunc return value needs 1 element for delta_beta [ \f$ \Delta \beta \f$ ]
+         * @note Default ctrl_func provides thermo and electro control that pre-defined in effects
+         * @note use delta_Nh, delta_Ne, delta_T in double to control the switches
          */
         void control(std::map<std::string, std::any> ctrl_vars) override {
             if(!ctrl_func) {
-
+                if(utils::map_key_exist(ctrl_vars, "delta_Nh") && utils::map_key_exist(ctrl_vars, "delta_Ne")) {
+                    const auto &_ring_num = std::any_cast<size_t>(device_vars["ring_number"]);
+                    auto _delta_Nh = std::any_cast<double>(ctrl_vars["delta_Nh"]);
+                    auto _delta_Ne = std::any_cast<double>(ctrl_vars["delta_Ne"]);
+                    auto _delta_n = effects::electro::cal_delta_n<double>(_delta_Ne, _delta_Nh,
+                            effects::electro::constants::COEF_P_1550, effects::electro::constants::COEF_Q_1550,
+                            effects::electro::constants::COEF_R_1550, effects::electro::constants::COEF_S_1550);
+                    device_vars["delta_n"] = std::vector<std::complex<double>>(_ring_num, _delta_n);
+                } else if(utils::map_key_exist(ctrl_vars, "delta_T")) {
+                    const auto &_ring_num = std::any_cast<size_t>(device_vars["ring_number"]);
+                    auto _delta_T = std::any_cast<double>(ctrl_vars["delta_T"]);
+                    auto _delta_n = effects::thermo::cal_delta_n<double>(effects::thermo::constants::THERMO_OPTIC_COEF_Si, _delta_T);
+                    device_vars["delta_n"] = std::vector<std::complex<double>>(_ring_num, _delta_n);
+                }
             } else {
                 auto ctrl_targets = ctrl_func(ctrl_vars);
             }
         }
 
     protected:
-        static double bending_loss(double ring_radius) {
-            double _alpha = 0.0;
-            if(ring_radius <= 20.0) {
-                _alpha = 0.03124 * pow(ring_radius, -3.02056);
-            }
-            return _alpha;
-        }
 
         /**
          * Acquire the Couple Matrix: \n
@@ -162,7 +172,7 @@ namespace cells {
             utils::map_setup_default(device_vars, "couple_length", std::vector<double>(ring_num + 1, 3.5));
             utils::map_setup_default(device_vars, "self_couple_coef", std::vector<double>(ring_num + 1, 0.912));
             utils::map_setup_default(device_vars, "cross_couple_coef", std::vector<double>(ring_num + 1, 0.410));
-            utils::map_setup_default(device_vars, "n", std::vector<std::complex<double>>(ring_num, 1.0));
+            //utils::map_setup_default(device_vars, "n", std::vector<std::complex<double>>(ring_num, 1.0));
             utils::map_setup_default(device_vars, "delta_n", std::vector<std::complex<double>>(ring_num, 0.0));
         }
         ~MicroRingCross() override = default;

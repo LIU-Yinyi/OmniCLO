@@ -136,8 +136,10 @@ void microring_test() {
     using effects::constants::i;
     std::map<std::string, std::any> config;
     config["ring_number"] = size_t(16);
-    config["couple_length"] = std::vector<double>(17, 0.0);
-    config["n"] = std::vector<std::complex<double>>(16, 1.4 + 6.04e-6 * i);
+    config["couple_length"] = std::vector<double>(17, 3.5);
+    config["self_couple_coef"] = std::vector<double>(17, 0.902);
+    config["cross_couple_coef"] = std::vector<double>(17, 0.398);
+    config["delta_n"] = std::vector<std::complex<double>>(16, 2.6298e-5 * i);
     cells::MicroRingSerial mrs("microring", config);
     mrs.print();
     mrs.set_E(Eigen::Vector2cd(1.0, 0.0));
@@ -146,6 +148,56 @@ void microring_test() {
     std::cout << "E_out = " << utils::print_vectorXcd(mrs.get_E()) << std::endl;
     std::cout << "P_in = " << utils::print_vectorXcd(utils::cal_P(mrs.get_E_in())) << std::endl;
     std::cout << "P_out = " << utils::print_vectorXcd(utils::cal_P(mrs.get_E())) << std::endl;
+    {
+        std::cout << "--- optimze couple length ---" << std::endl;
+        size_t N = 1000;
+        std::vector<double> cpl_list{}, loss_list{};
+        double cpl_start = 1.0, cpl_end = 4.0;
+        double cpl_delta = (cpl_end - cpl_start) / double(N - 1);
+        std::map<std::string, std::any> opt;
+        for (size_t idx = 0; idx < N; idx++) {
+            double cpl = cpl_start + cpl_delta * idx;
+            opt["couple_length"] = std::vector<double>(17, cpl);
+            mrs.optimize(opt);
+            mrs.update(1.55);
+            auto Pout = utils::cal_P(mrs.get_E());
+            auto Ptotal = Pout.sum().real();
+            auto LossdB = 10.0 * log(Ptotal);
+            cpl_list.push_back(cpl);
+            loss_list.push_back(LossdB);
+            std::cout << "CoupleLength = " << cpl << ", P_out = " << utils::print_vectorXcd(Pout)
+                      << ", Loss = " << LossdB << " dB" << std::endl;
+        }
+        std::cout << "cpl_list = " << utils::print_vector_double(cpl_list) << std::endl;
+        std::cout << "loss_list = " << utils::print_vector_double(loss_list) << std::endl;
+    }
+
+    {
+        std::cout << "--- optimze wavelength ---" << std::endl;
+        size_t N = 1000;
+        std::vector<double> wl_list{}, loss_through_list{}, loss_drop_list{};
+        double wl_start = 1.3, wl_end = 1.6;
+        double wl_delta = (wl_end - wl_start) / double(N - 1);
+        std::map<std::string, std::any> opt;
+        opt["couple_length"] = std::vector<double>(17, 3.5);
+        mrs.optimize(opt);
+        for (size_t idx = 0; idx < N; idx++) {
+            double wl = wl_start + wl_delta * idx;
+            mrs.update(wl);
+            auto Pout = utils::cal_P(mrs.get_E());
+            auto Ptotal = Pout.sum().real(), Pthrough = Pout(0, 0).real(), Pdrop = Pout(1, 0).real();
+            auto LossdB = 10.0 * log(Ptotal), lossThrough = 10.0 * log(Pthrough), lossDrop = 10.0 * log(Pdrop);
+            wl_list.push_back(wl);
+            loss_through_list.push_back(lossThrough);
+            loss_drop_list.push_back(lossDrop);
+            std::cout << "Wavelength = " << wl << ", P_out = " << utils::print_vectorXcd(Pout)
+                      << ", Loss = " << LossdB << " dB" << std::endl;
+        }
+        std::cout << "wl_list = " << utils::print_vector_double(wl_list) << std::endl;
+        std::cout << "loss_through_list = " << utils::print_vector_double(loss_through_list) << std::endl;
+        std::cout << "loss_drop_list = " << utils::print_vector_double(loss_drop_list) << std::endl;
+
+    }
 }
 
 void matrices_test() {
@@ -287,8 +339,115 @@ void std_complex_vector_vs_eigen_vectorXcd() {
 }
 
 //-------------------------------------------------//
+void cell_control_optimize_test() {
+    cells::MicroRingSerial mrs("microring-serial", {});
+    mrs.print();
+    mrs.set_E(Eigen::Vector2cd(1, 0));
+
+    std::map<std::string, std::any> ctrl_vars{};
+
+    int N = 1000;
+    double dT_start = -300.0, dT_end = 300.0;
+    double dT_delta = (dT_end - dT_start) / N;
+
+    double wl = 1.45;
+    std::vector<double> dT_list{}, P_through_list{}, P_drop_list{};
+    for(int idx = 0; idx < N; idx++) {
+        double dT = dT_start + dT_delta * idx;
+        ctrl_vars["delta_T"] = double(dT);
+        mrs.control(ctrl_vars);
+        mrs.update(wl);
+        auto Pout = utils::cal_P(mrs.get_E());
+        auto Ptotal = Pout.sum().real(), Pthrough = Pout(0, 0).real(), Pdrop = Pout(1, 0).real();
+        auto LossdB = 10.0 * log(Ptotal), lossThrough = 10.0 * log(Pthrough), lossDrop = 10.0 * log(Pdrop);
+        dT_list.push_back(dT);
+        P_through_list.push_back(Pthrough);
+        P_drop_list.push_back(Pdrop);
+        std::cout << "delta_T = " << dT << ", P_out = " << utils::print_vectorXcd(Pout)
+                  << ", Loss = " << LossdB << " dB; P_through = " << Pthrough << ", P_drop = " << Pdrop << std::endl;
+    }
+    int wl_str = int(wl * 1000.0);
+    std::cout << "dT_list_" << wl_str << " = " << utils::print_vector_double(dT_list) << ";" << std::endl;
+    std::cout << "P_through_list_" << wl_str << " = " << utils::print_vector_double(P_through_list) << ";" << std::endl;
+    std::cout << "P_drop_list_" << wl_str << " = " << utils::print_vector_double(P_drop_list) << ";" << std::endl;
+}
+
+void switch_on_off_Pt_Pd_test() {
+    cells::MicroRingSerial mrs("microring-serial", {});
+    mrs.print();
+    mrs.set_E(Eigen::Vector2cd(1, 0));
+
+    std::map<std::string, std::any> ctrl_vars{};
+
+    int N = 1000;
+    double T_on = 43.8, T_off = -43.8;
+
+    double wl_start = 1.5, wl_end = 1.55;
+    double wl_delta = (wl_end - wl_start) / double(N - 1);
+
+    {
+        std::vector<double> wl_list{}, P_through_list{}, P_drop_list{};
+        ctrl_vars["delta_T"] = double(T_on);
+        mrs.control(ctrl_vars);
+        for (int idx = 0; idx < N; idx++) {
+            double wl = wl_start + wl_delta * idx;
+            mrs.update(wl);
+            auto Pout = utils::cal_P(mrs.get_E());
+            auto Ptotal = Pout.sum().real(), Pthrough = Pout(0, 0).real(), Pdrop = Pout(1, 0).real();
+            auto LossdB = 10.0 * log(Ptotal), lossThrough = 10.0 * log(Pthrough), lossDrop = 10.0 * log(Pdrop);
+            wl_list.push_back(wl);
+            P_through_list.push_back(Pthrough);
+            P_drop_list.push_back(Pdrop);
+            /*
+            std::cout << "Wavelength = " << wl << ", P_out = " << utils::print_vectorXcd(Pout)
+                      << ", Loss = " << LossdB << " dB; P_through = " << Pthrough << ", P_drop = " << Pdrop
+                      << std::endl;
+                      */
+        }
+        std::string label = "on";
+        std::cout << "wl_list_" << label << " = " << utils::print_vector_double(wl_list) << ";" << std::endl;
+        std::cout << "P_through_list_" << label << " = " << utils::print_vector_double(P_through_list) << ";"
+                  << std::endl;
+        std::cout << "P_drop_list_" << label << " = " << utils::print_vector_double(P_drop_list) << ";" << std::endl;
+    }
+    {
+        std::vector<double> wl_list{}, P_through_list{}, P_drop_list{};
+        ctrl_vars["delta_T"] = double(T_off);
+        mrs.control(ctrl_vars);
+        for (int idx = 0; idx < N; idx++) {
+            double wl = wl_start + wl_delta * idx;
+            mrs.update(wl);
+            auto Pout = utils::cal_P(mrs.get_E());
+            auto Ptotal = Pout.sum().real(), Pthrough = Pout(0, 0).real(), Pdrop = Pout(1, 0).real();
+            auto LossdB = 10.0 * log(Ptotal), lossThrough = 10.0 * log(Pthrough), lossDrop = 10.0 * log(Pdrop);
+            wl_list.push_back(wl);
+            P_through_list.push_back(Pthrough);
+            P_drop_list.push_back(Pdrop);
+            /*
+            std::cout << "Wavelength = " << wl << ", P_out = " << utils::print_vectorXcd(Pout)
+                      << ", Loss = " << LossdB << " dB; P_through = " << Pthrough << ", P_drop = " << Pdrop
+                      << std::endl;
+                      */
+        }
+        std::string label = "off";
+        std::cout << "wl_list_" << label << " = " << utils::print_vector_double(wl_list) << ";" << std::endl;
+        std::cout << "P_through_list_" << label << " = " << utils::print_vector_double(P_through_list) << ";"
+                  << std::endl;
+        std::cout << "P_drop_list_" << label << " = " << utils::print_vector_double(P_drop_list) << ";" << std::endl;
+    }
+}
+
+//-------------------------------------------------//
+void terminator_test() {
+    matrices::Crossbar crossbar(8, 8);
+    crossbar.topology();
+    crossbar.print();
+}
+
+//-------------------------------------------------//
 int main() {
 
+    /*
     RUN_TIME_WRAPPER(random_testbench(100));
     RUN_TIME_WRAPPER(pagmo_testbench());
     RUN_TIME_WRAPPER(cells_test());
@@ -299,5 +458,10 @@ int main() {
     RUN_TIME_WRAPPER(any_dynamic_vector_test());
     RUN_TIME_WRAPPER(regex_test());
     RUN_TIME_WRAPPER(std_complex_vector_vs_eigen_vectorXcd());
+     */
+
+    //RUN_TIME_WRAPPER(cell_control_optimize_test());
+    //RUN_TIME_WRAPPER(switch_on_off_Pt_Pd_test());
+    RUN_TIME_WRAPPER(terminator_test());
     return 0;
 }

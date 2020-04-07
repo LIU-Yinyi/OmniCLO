@@ -71,18 +71,29 @@ namespace cells {
         /**
          * Coupler control strategy
          * @param ctrl_vars: control variables
-         * @note CtrlFunc return value needs 1 element for delta_beta [ \f$ \Delta \beta \f$ ]
+         * @note Default ctrl_func provides thermo and electro control that pre-defined in effects
+         * @note use delta_Nh, delta_Ne, delta_T in double to control the switches
          */
         void control(std::map<std::string, std::any> ctrl_vars) override {
-            auto &_delta_n = std::any_cast<std::complex<double>&>(device_vars["delta_n"]);
             if(!ctrl_func) {
-                if(utils::map_key_exist(ctrl_vars, "delta_n")) { _delta_n = std::any_cast<std::complex<double>>(ctrl_vars["delta_n"]); }
-                else { _delta_n = 0.0; }
+                if(utils::map_key_exist(ctrl_vars, "delta_Nh") && utils::map_key_exist(ctrl_vars, "delta_Ne")) {
+                    const auto &_ring_num = std::any_cast<size_t>(device_vars["ring_number"]);
+                    auto _delta_Nh = std::any_cast<double>(ctrl_vars["delta_Nh"]);
+                    auto _delta_Ne = std::any_cast<double>(ctrl_vars["delta_Ne"]);
+                    auto _delta_n = effects::electro::cal_delta_n<double>(_delta_Ne, _delta_Nh,
+                            effects::electro::constants::COEF_P_1550, effects::electro::constants::COEF_Q_1550,
+                            effects::electro::constants::COEF_R_1550, effects::electro::constants::COEF_S_1550);
+                    device_vars["delta_n"] = std::vector<std::complex<double>>(_ring_num, _delta_n);
+                } else if(utils::map_key_exist(ctrl_vars, "delta_T")) {
+                    const auto &_ring_num = std::any_cast<size_t>(device_vars["ring_number"]);
+                    auto _delta_T = std::any_cast<double>(ctrl_vars["delta_T"]);
+                    auto _delta_n = effects::thermo::cal_delta_n<double>(effects::thermo::constants::THERMO_OPTIC_COEF_Si, _delta_T);
+                    device_vars["delta_n"] = std::vector<std::complex<double>>(_ring_num, _delta_n);
+                }
             } else {
                 //TODO: update control function and variables
                 auto ctrl_targets = ctrl_func(ctrl_vars);
-                if(ctrl_targets.size() == 1) { _delta_n = std::any_cast<std::complex<double>>(ctrl_targets[0]); }
-                else { _delta_n = 0.0; }
+                if(ctrl_targets.size() == 1) {}
             }
         }
 

@@ -39,8 +39,8 @@ namespace matrices {
 
         void add_link(size_t out_from, size_t out_port_index, size_t in_to, size_t in_port_index, double weight = 1.0) {
             assert(out_from < cell_ptrs.size() && in_to < cell_ptrs.size());
-            assert(out_port_index < cell_ptrs[out_from]->out_size());
-            assert(in_port_index < cell_ptrs[in_to]->in_size());
+            //assert(out_port_index < cell_ptrs[out_from]->out_size());
+            //assert(in_port_index < cell_ptrs[in_to]->in_size());
             link_graph.insert(cell_in_id[in_to] + in_port_index, cell_out_id[out_from] + out_port_index) = weight;
         }
 
@@ -83,6 +83,8 @@ namespace matrices {
             }
         }
 
+        virtual void topology() {};
+
         size_t inputs_size() const { return inputs.size(); }
         size_t outputs_size() const { return outputs.size(); }
         size_t input_size(size_t cell_index) const { assert(cell_index < cell_ptrs.size()); return cell_ptrs[cell_index]->in_size(); }
@@ -90,6 +92,9 @@ namespace matrices {
 
         VectorXcd get_inputs() const { return inputs; }
         VectorXcd get_outputs() const { return outputs; }
+
+        std::string get_cell_name(size_t cell_index) const { assert(cell_index < cell_ptrs.size()); return cell_ptrs[cell_index]->get_name(); }
+        std::map<std::string, std::any> get_cell_vars(size_t cell_index) const { assert(cell_index < cell_ptrs.size()); return cell_ptrs[cell_index]->get_vars(); }
 
         void init_inputs(const VectorXcd &v) {
             assert(v.size() == inputs.size());

@@ -48,14 +48,17 @@ namespace utils {
     std::string print_vectorXcd(const VectorXcd &v) {
         std::stringstream ss{};
         ss << "[";
-        for (size_t idx = 0; idx < v.size() - 1; idx++) {
-            ss << v[idx].real();
-            if(v[idx].imag() >= 0.0) { ss << " + " << v[idx].imag() << "i, "; }
-            else { ss << " - " << -v[idx].imag() << "i, "; }
+        if(v.size() > 0) {
+            for (size_t idx = 0; idx < v.size() - 1; idx++) {
+                ss << v[idx].real();
+                if (v[idx].imag() >= 0.0) { ss << " + " << v[idx].imag() << "i, "; }
+                else { ss << " - " << -v[idx].imag() << "i, "; }
+            }
+
+            ss << v[v.size() - 1].real();
+            if (v[v.size() - 1].imag() >= 0.0) { ss << " + " << v[v.size() - 1].imag() << "i"; }
+            else { ss << " - " << -v[v.size() - 1].imag() << "i"; }
         }
-        ss << v[v.size() - 1].real();
-        if(v[v.size() - 1].imag() >= 0.0) { ss << " + " << v[v.size() - 1].imag() << "i"; }
-        else { ss << " - " << -v[v.size() - 1].imag() << "i"; }
         ss << "]";
         return ss.str();
     }
@@ -94,14 +97,17 @@ namespace utils {
     std::string print_vector_complex_double(const std::vector<std::complex<double>> &v) {
         std::stringstream ss{};
         ss << "[";
-        for (size_t idx = 0; idx < v.size() - 1; idx++) {
-            ss << v[idx].real();
-            if(v[idx].imag() >= 0.0) { ss << " + " << v[idx].imag() << "i, "; }
-            else { ss << " - " << -v[idx].imag() << "i, "; }
+        if(!v.empty()) {
+            for (size_t idx = 0; idx < v.size() - 1; idx++) {
+                ss << v[idx].real();
+                if (v[idx].imag() >= 0.0) { ss << " + " << v[idx].imag() << "i, "; }
+                else { ss << " - " << -v[idx].imag() << "i, "; }
+            }
+
+            ss << v[v.size() - 1].real();
+            if (v[v.size() - 1].imag() >= 0.0) { ss << " + " << v[v.size() - 1].imag() << "i"; }
+            else { ss << " - " << -v[v.size() - 1].imag() << "i"; }
         }
-        ss << v[v.size() - 1].real();
-        if(v[v.size() - 1].imag() >= 0.0) { ss << " + " << v[v.size() - 1].imag() << "i"; }
-        else { ss << " - " << -v[v.size() - 1].imag() << "i"; }
         ss << "]";
         return ss.str();
     }
@@ -266,13 +272,13 @@ namespace cells {
          * Set the values of \f$ E_{in} \f$
          * @param E: Electric field of inputs as a column vector
          */
-        void set_E(const VectorXcd &E) { assert(E.size() == E_in.size()); E_in = E; is_updated = false; }
+        virtual void set_E(const VectorXcd &E) { assert(E.size() == E_in.size()); E_in = E; is_updated = false; }
 
         /**
          * Get the values of \f$ E_{out} \f$
          * @return Electric field of outputs as a column vector
          */
-        VectorXcd get_E() const { return E_out; }
+        virtual VectorXcd get_E() const { return E_out; }
 
         /**
          * Get the size of input vector, which indicates the number of input ports
@@ -293,6 +299,12 @@ namespace cells {
         std::string get_name() const { return device_name; }
 
         /**
+         * Get the device variables of cell saved as device_vars
+         * @return device variables/parameters
+         */
+        std::map<std::string, std::any> get_vars() const { return device_vars; }
+
+        /**
          * For linear algebra, transfer matrix shape can be defined as \f$ N_{out} \times N_{in} \f$
          * @return std::tuple<size_t (RowNum), size_t (ColNum)>
          * @note for C++17 or above use: auto [rows, cols] = transfer_matrix_shape(); \n
@@ -300,10 +312,10 @@ namespace cells {
          */
         std::tuple<size_t, size_t> transfer_matrix_shape() const { return std::make_tuple(out_size(), in_size()); }
 
-        void set_E_in(const VectorXcd &E) { E_in = E; }
-        void set_E_out(const VectorXcd &E) { E_out = E; }
-        VectorXcd get_E_in() const { return E_in; }
-        VectorXcd get_E_out() const { return E_out; }
+        virtual void set_E_in(const VectorXcd &E) { E_in = E; }
+        virtual void set_E_out(const VectorXcd &E) { E_out = E; }
+        virtual VectorXcd get_E_in() const { return E_in; }
+        virtual VectorXcd get_E_out() const { return E_out; }
 
     protected:
         bool is_updated;    //!< the flag indicates whether \f$ E_{out} \f$ updated or not after refreshing \f$ E_{in} \f$

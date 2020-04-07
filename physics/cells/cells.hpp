@@ -12,6 +12,7 @@
 #include "waveguide.hpp"
 #include "coupler.hpp"
 #include "microring.hpp"
+#include "terminator.hpp"
 
 namespace cells {
 
@@ -23,8 +24,12 @@ namespace cells {
     template <typename T>
     std::string cell_type_name() {
         if(std::is_same<T, Waveguide>::value) { return "Waveguide"; }
+        else if(std::is_same<T, WaveguideCross>::value) { return "WaveguideCross"; }
         else if(std::is_same<T, Coupler>::value) { return "Coupler"; }
         else if(std::is_same<T, MicroRingSerial>::value) { return "MicroRingSerial"; }
+        else if(std::is_same<T, MicroRingCross>::value) { return "MicroRingCross"; }
+        else if(std::is_same<T, InputPort>::value) { return "InputPort"; }
+        else if(std::is_same<T, OutputPort>::value) { return "OutputPort"; }
         else { return ""; }
     }
 
