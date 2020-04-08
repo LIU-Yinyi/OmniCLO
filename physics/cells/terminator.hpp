@@ -17,7 +17,7 @@ namespace cells {
     /**
      * Input Port Derived from CellBase
      */
-    class InputPort: public CellBase {
+    class InputPort : public CellBase {
     public:
         InputPort(const std::string &name, const std::map<std::string, std::any> &vars):
             CellBase(1, 1, name) { device_vars = vars; }
@@ -31,7 +31,7 @@ namespace cells {
     /**
      * Output Port Derived from CellBase
      */
-    class OutputPort: public CellBase {
+    class OutputPort : public CellBase {
     public:
         OutputPort(const std::string &name, const std::map<std::string, std::any> &vars):
                 CellBase(1, 1, name) { device_vars = vars; }

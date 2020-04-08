@@ -2,8 +2,8 @@
  * @file crossbar.hpp
  * @brief Crossbar matrices in silicon photonic
  * @author LIU-Yinyi
- * @version 0.1.0
- * @date 2020-04-04
+ * @version 1.0.2
+ * @date 2020-04-08
  */
 
 #ifndef OMNICLO_CROSSBAR_HPP
@@ -26,7 +26,7 @@ namespace matrices {
          */
         Crossbar(size_t in_ports, size_t out_ports): MatricesBase(in_ports, out_ports) {}
 
-        virtual ~Crossbar() = default;
+        ~Crossbar() override = default;
 
         /**
          * Topology design
@@ -50,6 +50,7 @@ namespace matrices {
             }
             confirm_cell();
 
+            // connect link
             size_t term_in_id = in_ports_size * out_ports_size;
             size_t term_out_id = term_in_id + in_ports_size;
             for(size_t index_in = 0; index_in < in_ports_size; index_in++) {
@@ -71,6 +72,21 @@ namespace matrices {
                  }
             }
             confirm_link();
+        }
+
+        /**
+         * Control switch to conduct correctly from inputs to outputs
+         * @param in_out_flag: tuple of input-index, output-index, on-off-flag
+         */
+        void switch_ports(const std::vector<std::tuple<size_t, size_t, bool>> &in_out_flag) override {
+            if(!check_topology_ready()) return;
+            for(const auto &itm : in_out_flag) {
+                size_t _in = std::get<0>(itm), _out = std::get<1>(itm);
+                bool _on_off = std::get<2>(itm);
+                auto _id = _in * out_ports_size + _out;
+                //TODO: add on control
+                cell_ptrs[_id]->control({});
+            }
         }
     };
 }

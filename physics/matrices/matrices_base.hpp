@@ -33,7 +33,7 @@ namespace matrices {
             inputs_global(), outputs_global(), in_ports_size(in_ports), out_ports_size(out_ports), is_topology_ready(false) {
             assert(in_ports > 0 && out_ports > 0);
         }
-        ~MatricesBase() = default;
+        virtual ~MatricesBase() = default;
 
         /**
          * Add cell to network matrices
@@ -146,6 +146,14 @@ namespace matrices {
             }
             confirm_cell();
         };
+
+        /**
+         * Control switch to conduct correctly from inputs to outputs
+         * @param in_out: vector list of std::pair<input_index, output_index> to indicate switch from in to out
+         */
+        virtual void switch_ports(const std::vector<std::tuple<size_t, size_t, bool>> &in_out_flag) {
+            if(!check_topology_ready()) return;
+        }
 
         /**
          * Get the size of matrices input ports.
