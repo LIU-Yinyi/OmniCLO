@@ -14,34 +14,32 @@
 
 namespace cells {
 
+    /**
+     * Input Port Derived from CellBase
+     */
     class InputPort: public CellBase {
     public:
         InputPort(const std::string &name, const std::map<std::string, std::any> &vars):
-            CellBase(0, 1, name) { device_vars = vars; }
+            CellBase(1, 1, name) { device_vars = vars; }
 
         ~InputPort() override = default;
 
-        void update(double wavelength) override {}
+        void update(double wavelength) override { E_out = E_in; }
         void control(std::map<std::string, std::any> ctrl_vars) override {}
-
-        void set_E(const VectorXcd &E) override { assert(E.size() == E_out.size()); E_out = E; is_updated = false; }
-        void set_E_in(const VectorXcd &E) override { E_out = E; }
-        VectorXcd get_E_in() const override { return E_out; }
     };
 
+    /**
+     * Output Port Derived from CellBase
+     */
     class OutputPort: public CellBase {
     public:
         OutputPort(const std::string &name, const std::map<std::string, std::any> &vars):
-                CellBase(1, 0, name) { device_vars = vars; }
+                CellBase(1, 1, name) { device_vars = vars; }
 
         ~OutputPort() override = default;
 
-        void update(double wavelength) override {}
+        void update(double wavelength) override { E_out = E_in; }
         void control(std::map<std::string, std::any> ctrl_vars) override {}
-
-        VectorXcd get_E() const override { return E_in; }
-        void set_E_out(const VectorXcd &E) override { E_in = E; }
-        VectorXcd get_E_out() const override { return E_in; }
     };
 }
 

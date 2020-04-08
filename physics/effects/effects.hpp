@@ -14,8 +14,19 @@
 
 namespace effects {
 
+    /**
+     * Get the propagation loss of waveguide
+     * @param func_ptr: customize function pointer used for experiment data manager
+     * @return absorption coefficients \f$ alpha \f$
+     */
     inline double propagating_loss(double (*func_ptr)() = nullptr) { return (func_ptr != nullptr) ? func_ptr() : 3.0e-5; }
 
+    /**
+     * Get the bending loss of ring structure
+     * @param ring_radius: ring radius in unit: *micrometer*
+     * @param func_ptr: customize function pointer used for experiment data manager
+     * @return absorption coefficients \f$ alpha \f$
+     */
     double bending_loss(double ring_radius, double(*func_ptr)(double) = nullptr) {
         double _alpha = 0.0;
         if(!func_ptr) {
@@ -28,6 +39,12 @@ namespace effects {
         return _alpha;
     }
 
+    /**
+     * Get the effective refractive index
+     * @param wavelength: wavelength of light at vacuum in unit: *micrometer* [ \f$ \lambda_0 \f$ ]
+     * @param func_ptr: customize function pointer used for experiment data manager
+     * @return effective refractive index
+     */
     std::complex<double> n_effective(double wavelength, std::complex<double>(*func_ptr)(double) = nullptr) {
         using effects::constants::PI;
         std::complex<double> _retval;

@@ -54,10 +54,6 @@ vector_double model_func(const vector_double &dv) {
     return { dv[0] * (dv[0] + dv[1] * dv[2]) + pow(sin(dv[3]), dv[4]) };
 }
 
-/**
- * @brief \f$ y = x_0 * (x_0 + x_1 * x_2) + x_3^{x_4} \f$
- * @note \f$ x_{i} \in  [-2, 2] \f$
- */
 struct prob_v0 {
 
     vector_double fitness(const vector_double &dv) const {
@@ -201,7 +197,7 @@ void microring_test() {
 }
 
 void matrices_test() {
-    matrices::MatricesBase mb;
+    matrices::MatricesBase mb(2, 2);
     std::map<std::string, std::any> m;
     m["propagate_length"] = effects::constants::PI / 4.0;
 
@@ -209,7 +205,7 @@ void matrices_test() {
     mb.add_cell<cells::Coupler>(m);
     mb.add_cell<cells::Coupler>(m);
     mb.add_cell<cells::Coupler>(m);
-    mb.confirm_cell();
+    mb.topology();
 
     mb.add_link(0, 0, 1, 0);
     mb.add_link(0,1,3,0);
@@ -217,7 +213,7 @@ void matrices_test() {
     mb.add_link(2,1,3,1);
     mb.confirm_link();
 
-    size_t in_num = mb.inputs_size();
+    size_t in_num = mb.inputs_global_size();
     Eigen::VectorXcd vec_in = Eigen::VectorXcd::Zero(in_num);
     /*
     for(int i = 0; i < in_num; i++) {
@@ -228,12 +224,12 @@ void matrices_test() {
     vec_in(5) = 1.0;
 
     std::cout << "Inputs: E = " << utils::print_vectorXcd(vec_in) << std::endl;
-    mb.init_inputs(vec_in);
+    mb.init_inputs_global(vec_in);
     mb.update_iterate(1.55);
-    std::cout << "Inputs: E = " << utils::print_vectorXcd(mb.get_inputs()) << std::endl;
+    std::cout << "Inputs: E = " << utils::print_vectorXcd(mb.get_inputs_global()) << std::endl;
     mb.update_iterate(1.55);
-    std::cout << "Outputs: E = " << utils::print_vectorXcd(mb.get_outputs()) << std::endl;
-    std::cout << "Outputs: P = " << utils::print_vectorXcd(utils::cal_P(mb.get_outputs())) << std::endl;
+    std::cout << "Outputs: E = " << utils::print_vectorXcd(mb.get_outputs_global()) << std::endl;
+    std::cout << "Outputs: P = " << utils::print_vectorXcd(utils::cal_P(mb.get_outputs_global())) << std::endl;
 
     mb.print();
 }
@@ -438,30 +434,70 @@ void switch_on_off_Pt_Pd_test() {
 }
 
 //-------------------------------------------------//
+void decltype_test() {
+    std::vector<std::unique_ptr<int>> vi;
+    vi.push_back(std::make_unique<int>(1));
+    std::cout << typeid(*(vi[0])).name() << std::endl;
+
+    cells::CellBase *cb;
+    cells::InputPort ip("input", {});
+    cb = &ip;
+    std::cout << typeid(cb).name() << "\t" << (typeid(cb) == typeid(cells::InputPort)) << std::endl;
+    //std::cout << typeid(*cb).name() << "\t" << (typeid(*cb) == typeid(cells::InputPort)) << std::endl;
+
+    std::vector<std::unique_ptr<cells::CellBase>> cb_ptrs;
+    std::string name{"input"};
+    std::map<std::string, std::any> vars{};
+    cb_ptrs.push_back(std::make_unique<cells::InputPort>(name, vars));
+    std::cout << typeid(cb_ptrs[0]).name() << "\t" << (typeid(cb_ptrs[0]) == typeid(cells::InputPort)) << std::endl;
+    //std::cout << typeid(*(cb_ptrs[0])).name() << "\t" << (typeid(*(cb_ptrs[0])) == typeid(cells::InputPort)) << std::endl;
+
+    if(cb_ptrs[0].get()) {
+        auto &ref = *cb_ptrs[0].get();
+        std::cout << typeid(ref).name() << "\t" << (typeid(ref) == typeid(cells::InputPort)) << std::endl;
+    }
+}
+
+//-------------------------------------------------//
 void terminator_test() {
     matrices::Crossbar crossbar(8, 8);
     crossbar.topology();
     crossbar.print();
+    Eigen::VectorXcd out = crossbar.fetch_outputs();
+    Eigen::VectorXcd in = Eigen::VectorXcd::Zero(8);
+    in(4) = std::complex<double>(1, 0);
+    std::cout << crossbar.assign_inputs(in) << std::endl;
+    std::cout << "E_out(t=0) = " << utils::print_vectorXcd(out) << std::endl;
+    int times = 15;
+    double P_all = 0.0;
+    for(int t = 0; t < times; t++) {
+        crossbar.update_iterate(1.55);
+        out = crossbar.fetch_outputs();
+        P_all += utils::cal_P(out).sum().real();
+        std::cout << "E_out(t=" << t << ") = " << utils::print_vectorXcd(out) << std::endl;
+    }
+    std::cout << "P = " << P_all << ", Loss = " << 10.0*log(P_all) << "dB." << std::endl;
 }
 
 //-------------------------------------------------//
 int main() {
 
-    /*
-    RUN_TIME_WRAPPER(random_testbench(100));
-    RUN_TIME_WRAPPER(pagmo_testbench());
-    RUN_TIME_WRAPPER(cells_test());
-    RUN_TIME_WRAPPER(matrices_test());
 
-    RUN_TIME_WRAPPER(microring_test());
-    RUN_TIME_WRAPPER(any_test());
-    RUN_TIME_WRAPPER(any_dynamic_vector_test());
-    RUN_TIME_WRAPPER(regex_test());
-    RUN_TIME_WRAPPER(std_complex_vector_vs_eigen_vectorXcd());
-     */
+    //RUN_TIME_WRAPPER(random_testbench(100));
+    //RUN_TIME_WRAPPER(pagmo_testbench());
+    //RUN_TIME_WRAPPER(cells_test());
+    //RUN_TIME_WRAPPER(matrices_test());
+
+    //RUN_TIME_WRAPPER(microring_test());
+    //RUN_TIME_WRAPPER(any_test());
+    //RUN_TIME_WRAPPER(any_dynamic_vector_test());
+    //RUN_TIME_WRAPPER(regex_test());
+    //RUN_TIME_WRAPPER(std_complex_vector_vs_eigen_vectorXcd());
+
 
     //RUN_TIME_WRAPPER(cell_control_optimize_test());
     //RUN_TIME_WRAPPER(switch_on_off_Pt_Pd_test());
     RUN_TIME_WRAPPER(terminator_test());
+    //RUN_TIME_WRAPPER(decltype_test());
     return 0;
 }

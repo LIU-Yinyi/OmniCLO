@@ -14,15 +14,24 @@
 
 namespace matrices {
 
+    /**
+     * Crossbar Network Matrices
+     */
     class Crossbar : public MatricesBase {
     public:
-        Crossbar(size_t in_ports, size_t out_ports): MatricesBase(),
-            in_ports_size(in_ports), out_ports_size(out_ports) {
-            assert(in_ports > 0 && out_ports > 0);
-        }
+        /**
+         * Crossbar Constructor
+         * @param in_ports: number of input ports
+         * @param out_ports: number of output ports
+         */
+        Crossbar(size_t in_ports, size_t out_ports): MatricesBase(in_ports, out_ports) {}
 
         virtual ~Crossbar() = default;
 
+        /**
+         * Topology design
+         * @note After initializng the constructor, please excute topology() for auto-generating crossbar networks
+         */
         void topology() override {
             cell_ptrs.clear();
             // device cell
@@ -37,7 +46,7 @@ namespace matrices {
                 add_cell<cells::InputPort>({}, utils::naming_identifier("InputPort" + std::to_string(index_in)));
             }
             for(size_t index_out = 0; index_out < out_ports_size; index_out++) {
-                 add_cell<cells::OutputPort>({}, utils::naming_identifier("OutputPort" + std::to_string(index_out)));
+                add_cell<cells::OutputPort>({}, utils::naming_identifier("OutputPort" + std::to_string(index_out)));
             }
             confirm_cell();
 
@@ -63,10 +72,6 @@ namespace matrices {
             }
             confirm_link();
         }
-
-    protected:
-        size_t in_ports_size;
-        size_t out_ports_size;
     };
 }
 

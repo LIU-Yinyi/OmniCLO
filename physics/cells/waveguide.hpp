@@ -84,21 +84,38 @@ namespace cells {
          * Constructor with Waveguide Cross's properties
          * @param name: name of device cell
          * @param vars: parameters of device cell
+         * @note cite: Celo, D., et al. "Low-loss waveguide crossings for photonic integrated circuits on SOI technology."
+         * 11th International Conference on Group IV Photonics (GFP). IEEE, 2014.
          */
         WaveguideCross(const std::string &name, const std::map<std::string, std::any> &vars) :
                 CellBase(2, 2, name) {
             device_vars = vars;
-            //utils::map_setup_default(device_vars, "n", std::complex<double>(1, 0));
-            utils::map_setup_default(device_vars, "delta_n", std::complex<double>(0, 0));
-            utils::map_setup_default(device_vars, "propagate_length", double(10.0));
+            utils::map_setup_default(device_vars, "insertion_loss_dB", double(-0.11));
+            utils::map_setup_default(device_vars, "crosstalk_dB", double(-45.2));
         }
 
         ~WaveguideCross() override = default;
 
+        /**
+         * Waveguide update strategy
+         * @param wavelength: wavelength of light at vacuum in unit: *micrometer* [ \f$ \lambda_0 \f$ ]
+         */
         void update(double wavelength) override {
-
+            auto insertion_loss_dB = std::any_cast<double>(device_vars["insertion_loss_dB"]);
+            auto crosstalk_dB = std::any_cast<double>(device_vars["crosstalk_dB"]);
+            Eigen::Matrix2cd m;
+            double Li = exp(insertion_loss_dB / 10.0);
+            double Xt = exp(crosstalk_dB / 10.0);
+            m(0, 0) = m(1, 1) = Li;
+            m(1, 0) = m(0, 1) = Xt;
+            E_out = m * E_in;
         }
 
+        /**
+         * Waveguide control strategy
+         * @param ctrl_vars: control variables
+         * @note CtrlFunc return value needs 1 element for delta_n [ \f$ \Delta n \f$ ]
+         */
         void control(std::map<std::string, std::any> ctrl_vars) override {
             
         }

@@ -272,13 +272,13 @@ namespace cells {
          * Set the values of \f$ E_{in} \f$
          * @param E: Electric field of inputs as a column vector
          */
-        virtual void set_E(const VectorXcd &E) { assert(E.size() == E_in.size()); E_in = E; is_updated = false; }
+        void set_E(const VectorXcd &E) { assert(E.size() == E_in.size()); E_in = E; is_updated = false; }
 
         /**
          * Get the values of \f$ E_{out} \f$
          * @return Electric field of outputs as a column vector
          */
-        virtual VectorXcd get_E() const { return E_out; }
+        VectorXcd get_E() const { return E_out; }
 
         /**
          * Get the size of input vector, which indicates the number of input ports
@@ -312,10 +312,10 @@ namespace cells {
          */
         std::tuple<size_t, size_t> transfer_matrix_shape() const { return std::make_tuple(out_size(), in_size()); }
 
-        virtual void set_E_in(const VectorXcd &E) { E_in = E; }
-        virtual void set_E_out(const VectorXcd &E) { E_out = E; }
-        virtual VectorXcd get_E_in() const { return E_in; }
-        virtual VectorXcd get_E_out() const { return E_out; }
+        void set_E_in(const VectorXcd &E) { E_in = E; }
+        void set_E_out(const VectorXcd &E) { E_out = E; }
+        VectorXcd get_E_in() const { return E_in; }
+        VectorXcd get_E_out() const { return E_out; }
 
     protected:
         bool is_updated;    //!< the flag indicates whether \f$ E_{out} \f$ updated or not after refreshing \f$ E_{in} \f$
