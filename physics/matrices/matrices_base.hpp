@@ -131,6 +131,14 @@ namespace matrices {
         }
 
         /**
+         * Print the adjacent matrix that saved in link_graph.
+         */
+        void print_link_graph() const {
+            std::cout << MAGENTA << "\n/---------- Adjacent Matrix ----------\\\n"
+                      << link_graph << "\n\\-------------------------------------/\n" << RESET << std::endl;
+        }
+
+        /**
          * Once you finish adding cells, excute topology().\n
          * This function will automatically add in/out port for you, then you could add_link().
          * @note for override user, you should contain add_cell(), confirm_cell() and add_link() orderly.
@@ -149,7 +157,7 @@ namespace matrices {
 
         /**
          * Control switch to conduct correctly from inputs to outputs
-         * @param in_out: vector list of std::pair<input_index, output_index> to indicate switch from in to out
+         * @param in_out_flag: vector list of std::pair<input_index, output_index> to indicate switch from in to out
          */
         virtual void switch_ports(const std::vector<std::tuple<size_t, size_t, bool>> &in_out_flag) {
             if(!check_topology_ready()) return;

@@ -187,8 +187,9 @@ namespace cells {
         /**
          * Constructor with size of in/out port parameters
          * @param in_size: vector size of in-port
-         * @param out_size  vector size of out-port
-         * @sa in_size(), out_size()
+         * @param out_size: vector size of out-port
+         * @param name: name of cell in std::string, use utils::naming_identifier()
+         * @sa in_size(), out_size(), utils::naming_identifier()
          */
         explicit CellBase(size_t in_size, size_t out_size, std::string name): is_updated(true),
             ctrl_func(nullptr), device_vars{}, device_name(std::move(name)) {

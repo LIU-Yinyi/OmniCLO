@@ -31,7 +31,7 @@ namespace matrices {
 
         /**
          * Topology design
-         * @note After initializng the constructor, please excute topology() for auto-generating crossbar networks
+         * @note After initializng the constructor, please excute topology() for auto-generating fat-tree networks
          */
         void topology() override {
 

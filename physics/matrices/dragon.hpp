@@ -30,7 +30,7 @@ namespace matrices {
 
         /**
          * Topology design
-         * @note After initializng the constructor, please excute topology() for auto-generating crossbar networks
+         * @note After initializng the constructor, please excute topology() for auto-generating dragon networks
          */
         void topology() override {
 

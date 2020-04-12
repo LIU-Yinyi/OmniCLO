@@ -479,10 +479,13 @@ void terminator_test() {
     std::cout << "P = " << P_all << ", Loss = " << 10.0*log(P_all) << "dB." << std::endl;
 }
 
-void piloss_test() {
-    matrices::PILOSS piloss(3);
+void networks_test() {
+    matrices::PILOSS piloss(4);
     piloss.topology();
-    piloss.print();
+
+    matrices::Butterfly butterfly(4);
+    butterfly.topology();
+    butterfly.print_link_graph();
 }
 
 //-------------------------------------------------//
@@ -505,6 +508,6 @@ int main() {
     //RUN_TIME_WRAPPER(switch_on_off_Pt_Pd_test());
     //RUN_TIME_WRAPPER(terminator_test());
     //RUN_TIME_WRAPPER(decltype_test());
-    RUN_TIME_WRAPPER(piloss_test());
+    RUN_TIME_WRAPPER(networks_test());
     return 0;
 }
